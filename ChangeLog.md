@@ -1,3 +1,3 @@
-# Changelog for binpat
+# Changelog for eyepatch
 
 ## Unreleased changes
