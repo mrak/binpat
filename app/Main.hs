@@ -1,12 +1,21 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Main where
 
-import Eyepatch.Format.IPS
-import qualified Data.ByteString.Lazy as B
+import Eyepatch.Types
+import Eyepatch.Patch
+import qualified Data.ByteString.Lazy as LB
 import System.Exit
 import System.Environment
 import System.Console.Docopt
-import System.IO (stdout, Handle, openBinaryFile, IOMode(ReadMode,WriteMode))
+import System.IO ( stdout
+                 , stderr
+                 , Handle
+                 , openBinaryFile
+                 , hPutStrLn
+                 , IOMode( ReadMode
+                         , WriteMode
+                         )
+                 )
 import System.Directory
 
 patterns :: Docopt
@@ -41,11 +50,7 @@ parseEyepatchArgs args = do
 
 eyepatch :: EyepatchArgs -> IO ()
 eyepatch e = do
-    contents <- B.hGetContents $ patchfile e
-    if isIPS contents
-    then do
-        let records = getIPS contents
-        patchFile records (infile e) (outfile e)
-        print records
-        exitSuccess
-    else exitFailure
+    contents <- LB.hGetContents $ patchfile e
+    case getPatch contents of
+         Left e -> hPutStrLn stderr e >> exitFailure
+         Right p -> patchFile p (infile e) (outfile e)
