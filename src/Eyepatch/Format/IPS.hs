@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module IPS
+module Eyepatch.Format.IPS
     ( getIPS
     , isIPS
     , patchFile
@@ -7,6 +7,7 @@ module IPS
 
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString as SB
+import Eyepatch.Types
 import Data.Int (Int16, Int32)
 import Data.Word (Word8, Word32)
 import Data.Binary.Get
@@ -16,16 +17,13 @@ import System.IO (Handle, openTempFile, hClose, hSeek, SeekMode(AbsoluteSeek))
 import System.Directory (getTemporaryDirectory, removeFile)
 import Control.Exception (catch, finally)
 import GHC.IO.Exception
+import System.Environment (getProgName)
 
-type Int24 = Int32
-type Word24 = Word32
-
-data IPSRecord = IPSRecord Integer SB.ByteString deriving Show
---                         Offset  Data to write
+header = "PATCH"
+footer = "EOF"
 
 isIPS :: B.ByteString -> Bool
-isIPS bs = header == "PATCH"
-    where header = B.take 5 bs
+isIPS bs =  B.take 5 bs == header
 
 getInt24be :: Get Int24
 getInt24be = do
@@ -51,12 +49,12 @@ eofCheck :: Get Bool
 eofCheck = do
         eof <- getByteString 3
         empty <- isEmpty
-        pure $ eof == "EOF" && empty
+        pure $ eof == footer && empty
 
 patchFile :: [IPSRecord] -> Handle -> Handle -> IO ()
 patchFile records srch dsth = do
     tmpdir <- catch getTemporaryDirectory (\(IOError _ UnsupportedOperation _ _ _ _) -> pure ".")
-    (tmpfile, tmph) <- openTempFile tmpdir "eyepatch"
+    (tmpfile, tmph) <- openTempFile tmpdir =<< getProgName
     finally (work records srch tmph dsth) (cleanup tmph tmpfile)
     where cleanup h f = hClose h >> removeFile f
           work r sh th dh = do

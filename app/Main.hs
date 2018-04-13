@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 module Main where
 
-import IPS
+import Eyepatch.Format.IPS
 import qualified Data.ByteString.Lazy as B
 import System.Exit
 import System.Environment
