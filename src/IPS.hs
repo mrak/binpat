@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module IPS
-    ( getRecords
+    ( getIPS
     , isIPS
+    , patchFile
     ) where
 
 import qualified Data.ByteString.Lazy as B
@@ -10,13 +11,17 @@ import Data.Int (Int16, Int32)
 import Data.Word (Word8, Word32)
 import Data.Binary.Get
 import Data.Bits
+import Data.List (genericReplicate)
+import System.IO (Handle, openTempFile, hClose, hSeek, SeekMode(AbsoluteSeek))
+import System.Directory (getTemporaryDirectory, removeFile)
+import Control.Exception (catch, finally)
+import GHC.IO.Exception
 
 type Int24 = Int32
 type Word24 = Word32
 
-data IPS = IPSRecord !Int24 !Int16 !SB.ByteString
-         | RLERecord !Int24 !Int16 !Word8
-         deriving Show
+data IPSRecord = IPSRecord Integer SB.ByteString deriving Show
+--                         Offset  Data to write
 
 isIPS :: B.ByteString -> Bool
 isIPS bs = header == "PATCH"
@@ -29,10 +34,10 @@ getInt24be = do
     third  <- getWord8
     pure $ fromIntegral first `shiftL` 16 .|. fromIntegral second `shiftL`  8 .|. fromIntegral third
 
-getRecords :: B.ByteString -> [IPS]
-getRecords = runGet getIPSinner . B.drop 5
+getIPS:: B.ByteString -> [IPSRecord]
+getIPS= runGet getIPSinner . B.drop 5
 
-getIPSinner :: Get [IPS]
+getIPSinner :: Get [IPSRecord]
 getIPSinner = do
     finished <- lookAhead eofCheck
     if finished
@@ -48,7 +53,21 @@ eofCheck = do
         empty <- isEmpty
         pure $ eof == "EOF" && empty
 
-getRecord :: Get IPS
+patchFile :: [IPSRecord] -> Handle -> Handle -> IO ()
+patchFile records srch dsth = do
+    tmpdir <- catch getTemporaryDirectory (\(IOError _ UnsupportedOperation _ _ _ _) -> pure ".")
+    (tmpfile, tmph) <- openTempFile tmpdir "eyepatch"
+    finally (work records srch tmph dsth) (cleanup tmph tmpfile)
+    where cleanup h f = hClose h >> removeFile f
+          work r sh th dh = do
+              B.hGetContents sh >>= B.hPut th
+              mapM_ (patchRecord th) records
+              B.hGetContents th >>= B.hPut dh
+          patchRecord th (IPSRecord offset bytes) = do
+              hSeek th AbsoluteSeek (fromIntegral offset)
+              SB.hPut th bytes
+
+getRecord :: Get IPSRecord
 getRecord = do
     offset <- getInt24be
     size <- getInt16be
@@ -56,7 +75,7 @@ getRecord = do
     then do
         size <- getInt16be
         byte <- getWord8
-        pure $ RLERecord offset size byte
+        pure $ IPSRecord (fromIntegral offset) (SB.pack.genericReplicate size $ byte)
     else do
         bytes <- getByteString $ fromIntegral size
-        pure $ IPSRecord offset size bytes
+        pure $ IPSRecord (fromIntegral offset) bytes
