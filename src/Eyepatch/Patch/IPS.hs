@@ -5,9 +5,11 @@ module Eyepatch.Patch.IPS
     , applyPatch
     ) where
 
+import Eyepatch.Types
+
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.ByteString as SB
-import Eyepatch.Types
+import Control.Monad (guard)
 import Data.Int (Int16, Int32)
 import Data.Word (Word8, Word32)
 import Data.Binary.Get ( Get
@@ -32,9 +34,9 @@ applyPatch p h = mapM_ (patchRecord h) p
             SB.hPut th bytes
 
 tryGetPatch :: LB.ByteString -> Maybe Patch
-tryGetPatch bs = if isIPS bs
-                    then Just $ IPS $ getIPS bs
-                    else Nothing
+tryGetPatch bs = do
+    guard (isIPS bs)
+    IPS <$> getIPS bs
 
 isIPS :: LB.ByteString -> Bool
 isIPS bs =  LB.take 5 bs == header
@@ -46,8 +48,8 @@ getInt24be = do
     third  <- getWord8
     pure $ fromIntegral first `shiftL` 16 .|. fromIntegral second `shiftL`  8 .|. fromIntegral third
 
-getIPS:: LB.ByteString -> IPSPatch
-getIPS = runGet getIPSinner . LB.drop 5
+getIPS:: LB.ByteString -> Maybe IPSPatch
+getIPS = Just <$> runGet getIPSinner . LB.drop 5
 
 getIPSinner :: Get IPSPatch
 getIPSinner = do

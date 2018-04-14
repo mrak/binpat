@@ -2,6 +2,7 @@
 module Eyepatch.Arguments where
 
 import Eyepatch.Types
+import Data.Maybe (fromMaybe)
 import System.Console.Docopt
 import Control.Monad (when)
 import System.Exit (exitFailure)
@@ -19,9 +20,8 @@ import System.IO ( Handle
 patterns :: Docopt
 patterns = [docopt|
 Usage:
-    eyepatch <file> <patchfile>
-    eyepatch -      <patchfile>
-    eyepatch <file> -
+    eyepatch [options] [--] <file> <patchfile>
+    eyepatch <file> <patchfile> [options]
 
 Options:
     -o=<file>   Output to file. Defaults to STDOUT
@@ -37,15 +37,9 @@ parseEyepatchArgs rawArgs = do
         hPrint stderr "Only one of <file> and <patchfile> can be STDIN"
         exitFailure
 
-    let mOutfile = getArg args (shortOption 'o')
+    let outfile = fromMaybe "-" $ getArg args (shortOption 'o')
 
-    hInfile <- readFileOrStdin infile
-    hPatchfile <- readFileOrStdin patchfile
-    hOutfile <- case mOutfile of
-                     Nothing -> pure stdout
-                     Just o -> openBinaryFile o WriteMode
-
-    pure $ EyepatchArgs hInfile hPatchfile hOutfile
+    pure $ EyepatchArgs infile patchfile outfile
 
 readFileOrStdin :: FilePath -> IO Handle
 readFileOrStdin "-" = pure stdin

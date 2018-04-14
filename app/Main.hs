@@ -13,7 +13,7 @@ main = getArgs >>= parseEyepatchArgs >>= eyepatch
 
 eyepatch :: EyepatchArgs -> IO ()
 eyepatch e = do
-    contents <- LB.hGetContents $ patchfile e
+    contents <- LB.readFile $ patchfile e
     case getPatch contents of
-         Left e -> hPrint stderr e >> exitFailure
+         Left er -> hPrint stderr er >> exitFailure
          Right p -> patchFile p (infile e) (outfile e)
