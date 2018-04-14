@@ -14,14 +14,14 @@ import Data.Either.Combinators (maybeToRight)
 getPatch :: LB.ByteString -> Either String Patch
 getPatch = maybeToRight "Unrecognized patchfile format" . IPS.tryGetPatch
 
-patchFile :: Patch -> FilePath -> FilePath -> IO ()
-patchFile p s d = do
+patchFile :: [Patch] -> FilePath -> FilePath -> IO ()
+patchFile ps s d = do
     td <- getTempOrCurrentDir
     (tf, th) <- openBinaryTempFile td =<< getProgName
     finally (work tf th) (hClose th >> removeFile tf)
     where work tf th = do
               copySource s th
-              applyPatch p th
+              mapM_ (`applyPatch` th) ps
               hClose th
               copyDestination tf d
 

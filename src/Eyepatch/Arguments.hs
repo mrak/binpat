@@ -21,7 +21,6 @@ patterns :: Docopt
 patterns = [docopt|
 Usage:
     eyepatch [options] [--] <file> <patchfile>...
-    eyepatch <file> <patchfile>... [options]
 
 Options:
     -o=<file>   Output to file. Defaults to STDOUT
