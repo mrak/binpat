@@ -16,7 +16,7 @@ data IPSRecord = IPSRecord Integer SB.ByteString deriving Show
 
 data Patch = IPS IPSPatch
 
-data EyepatchArgs = EyepatchArgs { infile    :: FilePath
-                                 , patchfile :: FilePath
-                                 , outfile   :: FilePath
+data EyepatchArgs = EyepatchArgs { infile     :: FilePath
+                                 , patchfiles :: [FilePath]
+                                 , outfile    :: FilePath
                                  }

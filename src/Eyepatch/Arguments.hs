@@ -20,8 +20,8 @@ import System.IO ( Handle
 patterns :: Docopt
 patterns = [docopt|
 Usage:
-    eyepatch [options] [--] <file> <patchfile>
-    eyepatch <file> <patchfile> [options]
+    eyepatch [options] [--] <file> <patchfile>...
+    eyepatch <file> <patchfile>... [options]
 
 Options:
     -o=<file>   Output to file. Defaults to STDOUT
@@ -31,15 +31,17 @@ parseEyepatchArgs :: [String] -> IO EyepatchArgs
 parseEyepatchArgs rawArgs = do
     args <- parseArgsOrExit patterns rawArgs
     infile <- getArgOrExitWith patterns args (argument "file")
-    patchfile <- getArgOrExitWith patterns args (argument "patchfile")
+    let patchfiles = getAllArgs args (argument "patchfile")
 
-    when ("-" == infile && "-" == patchfile) $ do
+    when (null patchfiles) (exitWithUsage patterns)
+
+    when ("-" == infile && elem "-" patchfiles) $ do
         hPrint stderr "Only one of <file> and <patchfile> can be STDIN"
         exitFailure
 
     let outfile = fromMaybe "-" $ getArg args (shortOption 'o')
 
-    pure $ EyepatchArgs infile patchfile outfile
+    pure $ EyepatchArgs infile patchfiles outfile
 
 readFileOrStdin :: FilePath -> IO Handle
 readFileOrStdin "-" = pure stdin
