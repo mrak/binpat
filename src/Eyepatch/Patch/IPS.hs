@@ -1,16 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
 module Eyepatch.Patch.IPS
     ( tryGetPatch
     , applyPatch
     ) where
 
 import Eyepatch.Types
+import Eyepatch.Binary.Get (getInt24be)
 
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.ByteString as SB
 import Control.Monad (guard)
-import Data.Int (Int16, Int32)
+import Data.Int (Int16)
 import Data.Word (Word8, Word32)
 import Data.Binary.Get ( Get
                        , getWord8
@@ -20,7 +20,6 @@ import Data.Binary.Get ( Get
                        , getInt16be
                        , isEmpty
                        )
-import Data.Bits ((.|.), shiftL)
 import Data.List (genericReplicate)
 import System.IO (Handle, hSeek, SeekMode(AbsoluteSeek))
 
@@ -41,24 +40,17 @@ tryGetPatch bs = do
 isIPS :: LB.ByteString -> Bool
 isIPS bs =  LB.take 5 bs == header
 
-getInt24be :: Get Int24
-getInt24be = do
-    first  <- getWord8
-    second <- getWord8
-    third  <- getWord8
-    pure $ fromIntegral first `shiftL` 16 .|. fromIntegral second `shiftL`  8 .|. fromIntegral third
-
 getIPS:: LB.ByteString -> Maybe IPSPatch
-getIPS = Just <$> runGet getIPSinner . LB.drop 5
+getIPS = Just <$> runGet getIPS' . LB.drop 5
 
-getIPSinner :: Get IPSPatch
-getIPSinner = do
+getIPS' :: Get IPSPatch
+getIPS' = do
     finished <- lookAhead eofCheck
     if finished
        then pure []
        else do
            record <- getRecord
-           rest <- getIPSinner
+           rest <- getIPS'
            pure $ record : rest
 
 eofCheck :: Get Bool
