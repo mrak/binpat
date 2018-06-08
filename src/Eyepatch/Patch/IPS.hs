@@ -40,7 +40,7 @@ tryGetPatch bs = do
 isIPS :: LB.ByteString -> Bool
 isIPS bs =  LB.take 5 bs == header
 
-getIPS:: LB.ByteString -> Maybe IPSPatch
+getIPS :: LB.ByteString -> Maybe IPSPatch
 getIPS = Just <$> runGet getIPS' . LB.drop 5
 
 getIPS' :: Get IPSPatch

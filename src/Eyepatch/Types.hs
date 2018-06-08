@@ -10,11 +10,20 @@ import System.IO (Handle)
 type Int24 = Int32
 type Word24 = Word32
 type IPSPatch = [IPSRecord]
+type XORblock = (Integer, SB.ByteString)
+data UPSPatch = UPSPatch { iSize :: Integer
+                         , oSize :: Integer
+                         , xorBlocks :: [XORblock]
+                         , iSum :: Word32
+                         , oSum :: Word32
+                         , pSum :: Word32
+                         }
 
 --                         Offset  Data to write
 data IPSRecord = IPSRecord Integer SB.ByteString deriving Show
 
 data Patch = IPS IPSPatch
+           | UPS UPSPatch
 
 data EyepatchArgs = EyepatchArgs { infile     :: FilePath
                                  , patchfiles :: [FilePath]
